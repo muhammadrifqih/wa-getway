@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ./panel
+      dockerfile: ../docker/app/Dockerfile
+    container_name: wa_saas_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./panel:/var/www
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - wa_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: wa_saas_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./panel:/var/www
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - app
+    networks:
+      - wa_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: wa_saas_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wa_saas
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_USER: wa_saas
+      MYSQL_PASSWORD: secret
+    volumes:
+      - wa_saas_dbdata:/var/lib/mysql
+    networks:
+      - wa_network
+
+  redis:
+    image: redis:alpine
+    container_name: wa_saas_redis
+    restart: unless-stopped
+    volumes:
+      - wa_saas_redisdata:/data
+    networks:
+      - wa_network
+
+  queue:
+    build:
+      context: ./panel
+      dockerfile: ../docker/app/Dockerfile
+    container_name: wa_saas_queue
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan queue:work redis --sleep=3 --tries=3
+    volumes:
+      - ./panel:/var/www
+    depends_on:
+      - app
+      - redis
+    networks:
+      - wa_network
+
+  wa-service:
+    build:
+      context: ./wa-service
+      dockerfile: ../docker/wa-service/Dockerfile
+    container_name: wa_saas_engine
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - WA_SERVICE_KEY=secret123
+      - PANEL_WEBHOOK_URL=http://nginx/api/internal/webhook/receive
+    volumes:
+      - ./wa-service:/usr/src/app
+      - ./wa-service/sessions:/usr/src/app/sessions
+    networks:
+      - wa_network
+
+networks:
+  wa_network:
+    driver: bridge
+
+volumes:
+  wa_saas_dbdata:
+  wa_saas_redisdata:
