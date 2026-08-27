@@ -49,6 +49,8 @@ class SendWhatsAppMessageJob implements ShouldQueue
                 $payload['media_url'] = $message->media_url;
                 $payload['media_name'] = $message->media_name;
                 $payload['media_mimetype'] = $message->media_mimetype;
+            } else if ($message->type === 'poll' && $message->metadata) {
+                $payload['metadata'] = $message->metadata;
             }
 
             $response = Http::withHeaders([

@@ -132,6 +132,19 @@ curl -X POST {{ url('/api/v1/messages') }} \
     "media_url": "https://picsum.photos/400/300",
     "media_mimetype": "image/jpeg"
 }'</pre>
+                            
+                            <h5 class="font-medium text-gray-800 mb-2 mt-4">Contoh cURL (Mengirim Tombol Cepat / Polling):</h5>
+                            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto text-gray-800 border border-gray-200">
+curl -X POST {{ url('/api/v1/messages') }} \
+-H "Content-Type: application/json" \
+-H "Accept: application/json" \
+-H "Authorization: Bearer wa_live_KUNCI_API_ANDA_DISINI" \
+-d '{
+    "target": "08123456789",
+    "message": "Silakan pilih paket langganan Anda:",
+    "poll_name": "Pilih Paket Internet",
+    "poll_options": ["Paket 10GB", "Paket 50GB", "Hubungi CS"]
+}'</pre>
                         </div>
                     </div>
 
@@ -206,8 +219,22 @@ if ($secret !== 'SECRET_WEBHOOK_ANDA_DARI_DASHBOARD') {
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
-// 4. Buat Logika Bot & Balas
-if (strtolower($data['message']) === 'ping') {
+$pesanTeks = $data['message'] ?? '';
+$pengirim = $data['sender'] ?? '';
+
+// 4. Tangkap Gambar / Lokasi (Jika Ada)
+if (isset($data['media_base64'])) {
+    // Simpan Base64 ke dalam File atau Database
+    $base64 = $data['media_base64'];
+}
+
+if (isset($data['location_data'])) {
+    $lat = $data['location_data']['latitude'];
+    $lng = $data['location_data']['longitude'];
+}
+
+// 5. Buat Logika Bot & Balas
+if (strtolower($pesanTeks) === 'ping') {
     header('Content-Type: application/json');
     echo json_encode(["reply" => "Pong! Bot aktif."]);
     exit;
@@ -225,7 +252,15 @@ app.post('/webhook', (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { message, sender } = req.body;
+    const { message, sender, media_base64, location_data } = req.body;
+    
+    if (location_data) {
+        console.log(`Titik GPS dikirim: ${location_data.latitude}, ${location_data.longitude}`);
+    }
+
+    if (media_base64) {
+        console.log(`Menerima File Gambar Base64`);
+    }
     
     // Logika Bot
     if (message.toLowerCase() === 'halo') {

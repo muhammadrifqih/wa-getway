@@ -19,7 +19,9 @@ class MessageController extends Controller
             'device_id' => 'nullable|integer',
             'media_url' => 'nullable|url',
             'media_name' => 'nullable|string',
-            'media_mimetype' => 'nullable|string'
+            'media_mimetype' => 'nullable|string',
+            'poll_name' => 'nullable|string',
+            'poll_options' => 'nullable|array|min:1'
         ]);
 
         if ($validator->fails()) {
@@ -62,15 +64,21 @@ class MessageController extends Controller
         if ($subscription->plan->max_messages > 0 && $messageCount >= $subscription->plan->max_messages) {
             return response()->json(['error' => 'Message quota exceeded for your current plan.'], 403);
         }
+        $isPoll = $request->filled('poll_name') && $request->filled('poll_options');
+        
         $message = Message::create([
             'user_id' => $user->id,
             'whatsapp_device_id' => $device->id,
             'target' => $request->target,
             'message' => $request->message,
-            'type' => $request->filled('media_url') ? 'media' : 'text',
+            'type' => $isPoll ? 'poll' : ($request->filled('media_url') ? 'media' : 'text'),
             'media_url' => $request->media_url,
             'media_name' => $request->media_name,
             'media_mimetype' => $request->media_mimetype,
+            'metadata' => $isPoll ? [
+                'poll_name' => $request->poll_name,
+                'poll_options' => $request->poll_options
+            ] : null,
             'status' => 'pending'
         ]);
 

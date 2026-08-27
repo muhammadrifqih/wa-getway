@@ -19,7 +19,12 @@ class Message extends Model
         'status',
         'error_message',
         'sent_at',
-        'delivered_at'
+        'delivered_at',
+        'metadata'
+    ];
+
+    protected $casts = [
+        'metadata' => 'array'
     ];
 
     public function device()

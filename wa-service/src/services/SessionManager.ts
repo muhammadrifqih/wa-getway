@@ -238,7 +238,7 @@ class SessionManager {
     return { qr: session.qr };
   }
 
-  public async sendMessage(sessionId: string, target: string, message: string, media?: { url?: string, name?: string, mimetype?: string }) {
+  public async sendMessage(sessionId: string, target: string, message: string, media?: { url?: string, name?: string, mimetype?: string }, metadata?: any) {
     const session = this.sessions.get(sessionId);
     if (!session || session.status !== 'connected' || !session.socket) {
       throw new Error('Session is not connected');
@@ -255,7 +255,15 @@ class SessionManager {
 
     let messagePayload: any = { text: message };
 
-    if (media && media.url) {
+    if (metadata && metadata.poll_name && metadata.poll_options) {
+        messagePayload = {
+            poll: {
+                name: metadata.poll_name,
+                values: metadata.poll_options,
+                selectableCount: 1
+            }
+        };
+    } else if (media && media.url) {
       if (media.mimetype && media.mimetype.startsWith('image/')) {
         messagePayload = {
           image: { url: media.url },

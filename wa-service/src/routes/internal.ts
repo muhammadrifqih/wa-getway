@@ -46,18 +46,18 @@ router.get('/sessions/:sessionId/qr', (req, res) => {
 
 router.post('/sessions/:sessionId/send', async (req, res) => {
   const { sessionId } = req.params;
-  const { target, message, media_url, media_name, media_mimetype } = req.body;
+  const { target, message, media_url, media_name, media_mimetype, metadata } = req.body;
   
-  if (!target || !message) {
-    return res.status(400).json({ error: 'target and message required' });
+  if (!target || (!message && !metadata)) {
+    return res.status(400).json({ error: 'target and message/metadata required' });
   }
 
   try {
-    const result = await sessionManager.sendMessage(sessionId, target, message, {
+    const result = await sessionManager.sendMessage(sessionId, target, message || '', {
       url: media_url,
       name: media_name,
       mimetype: media_mimetype
-    });
+    }, metadata);
     res.json({ success: true, result });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
