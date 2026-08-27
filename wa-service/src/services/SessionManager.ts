@@ -263,6 +263,15 @@ class SessionManager {
                 selectableCount: 1
             }
         };
+    } else if (metadata && metadata.latitude && metadata.longitude) {
+        messagePayload = {
+            location: {
+                degreesLatitude: metadata.latitude,
+                degreesLongitude: metadata.longitude,
+                name: metadata.location_name || undefined,
+                address: metadata.location_address || undefined
+            }
+        };
     } else if (media && media.url) {
       if (media.mimetype && media.mimetype.startsWith('image/')) {
         messagePayload = {
