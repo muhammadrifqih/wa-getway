@@ -153,15 +153,32 @@ curl -X POST {{ url('/api/v1/messages') }} \
                             <h5 class="font-medium text-gray-800 mb-2">Format Data JSON (Dikirim oleh Gateway ke Server Anda):</h5>
                             <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto text-gray-800 border border-gray-200 mb-4">
 {
-  "session_id": "session-user-1-abc1234",
-  "sender": "628123456789@s.whatsapp.net",
-  "message": "Halo Min, barang ready?",
-  "timestamp": 1787508732,
-  "type": "message",
-  "signature": "a3f5c8b..."
-}</pre>
+    "session_id": "session-user-1-abc12345",
+    "sender": "6281234567890@s.whatsapp.net",
+    "message": "Isi pesan yang dikirim oleh pelanggan",
+    "timestamp": 1690000000,
+    "type": "message",
+    "media_base64": "data:image/jpeg;base64,... (Muncul jika ada gambar/media)",
+    "location_data": {
+        "latitude": -6.2088,
+        "longitude": 106.8456,
+        "name": "Monas",
+        "address": "Jakarta"
+    },
+    "signature": "a1b2c3d4e5f6..."
+}
+</pre>
+                <div class="mt-4">
+                    <h4 class="font-medium text-gray-900 mb-2">Penjelasan Field:</h4>
+                    <ul class="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                        <li><code>type</code>: Jenis pesan (<code>message</code>, <code>image</code>, <code>video</code>, <code>audio</code>, <code>document</code>, <code>location</code>).</li>
+                        <li><code>media_base64</code>: Jika klien mengirim gambar/video, file tersebut akan disandikan menjadi teks Base64 String yang bisa langsung Anda simpan.</li>
+                        <li><code>location_data</code>: Menampilkan Titik Koordinat GPS jika klien Anda mengirim Share Lokasi.</li>
+                        <li><code>signature</code>: Hash keamanan HMAC-SHA256 yang dibuat dari seluruh isi <i>payload</i> menggunakan rahasia Webhook Anda.</li>
+                    </ul>
+                </div>
 
-                            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6">
+                            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6 mt-6">
                                 <h5 class="font-bold text-indigo-800 mb-2">⚡ Fitur Balasan Cepat (Auto-Reply)</h5>
                                 <p class="text-sm text-indigo-700 mb-2">Alih-alih memanggil API pengiriman pesan secara terpisah, server Webhook Anda dapat merespons (HTTP 200) dengan mencetak JSON sederhana untuk <strong>membalas otomatis (bot)</strong>:</p>
                                 <pre class="bg-white p-2 rounded border border-indigo-200 text-sm text-gray-800">

@@ -111,11 +111,62 @@ class SessionManager {
       if (!msg.message || msg.key.fromMe) return;
 
       const sender = msg.key.remoteJid;
-      const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
+      let textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
+      
+      let mediaBase64 = null;
+      let messageType = 'message';
+      
+      const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
 
-      if (textMessage) {
-        console.log(`[${sessionId}] Incoming message from ${sender}: ${textMessage}`);
-        console.log(`[${sessionId}] FULL MSG:`, JSON.stringify(msg, null, 2));
+      // Check if it's a media message
+      const isMedia = msg.message.imageMessage || msg.message.videoMessage || msg.message.documentMessage || msg.message.audioMessage;
+      const isLocation = msg.message.locationMessage || msg.message.liveLocationMessage;
+      
+      let locationData = null;
+
+      if (isLocation) {
+        const locMsg = msg.message.locationMessage || msg.message.liveLocationMessage;
+        messageType = 'location';
+        locationData = {
+            latitude: locMsg?.degreesLatitude,
+            longitude: locMsg?.degreesLongitude,
+            name: locMsg?.name || '',
+            address: locMsg?.address || ''
+        };
+        textMessage = `Shared Location: ${locMsg?.degreesLatitude}, ${locMsg?.degreesLongitude}`;
+      } else if (isMedia) {
+        try {
+          messageType = msg.message.imageMessage ? 'image' : 
+                        msg.message.videoMessage ? 'video' : 
+                        msg.message.audioMessage ? 'audio' : 'document';
+                        
+          if (!textMessage) {
+              textMessage = msg.message.imageMessage?.caption || msg.message.videoMessage?.caption || msg.message.documentMessage?.caption || '';
+          }
+
+          const buffer = await downloadMediaMessage(
+              msg,
+              'buffer',
+              { },
+              { logger: logger as any, reuploadRequest: sock.updateMediaMessage }
+          );
+          
+          const mime = msg.message.imageMessage?.mimetype || 
+                       msg.message.videoMessage?.mimetype || 
+                       msg.message.audioMessage?.mimetype || 
+                       msg.message.documentMessage?.mimetype || 'application/octet-stream';
+          
+          // Convert buffer to Base64 directly in RAM
+          mediaBase64 = `data:${mime};base64,${buffer.toString('base64')}`;
+          console.log(`[${sessionId}] Media downloaded and converted to Base64`);
+
+        } catch (err) {
+            console.error(`[${sessionId}] Failed to download media`, err);
+        }
+      }
+
+      if (textMessage || mediaBase64 || locationData) {
+        console.log(`[${sessionId}] Incoming ${messageType} from ${sender}: ${textMessage}`);
         
         // Forward to Laravel Webhook Receiver
         const webhookReceiverUrl = process.env.PANEL_WEBHOOK_URL || 'http://localhost:8000/api/internal/webhook/receive';
@@ -128,12 +179,16 @@ class SessionManager {
             sender: sender,
             message: textMessage,
             timestamp: msg.messageTimestamp,
-            type: 'message'
+            type: messageType,
+            media_base64: mediaBase64,
+            location_data: locationData
           }, {
             headers: {
               'Content-Type': 'application/json',
               'X-SERVICE-KEY': serviceKey
-            }
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity
           });
         } catch (err) {
           console.error(`[${sessionId}] Failed to forward message to Panel Webhook`, err);
