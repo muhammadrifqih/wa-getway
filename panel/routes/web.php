@@ -30,6 +30,14 @@ Route::view('dashboard/admin', 'admin')
     ->middleware(['auth', 'verified', 'admin'])
     ->name('admin');
 
+Route::view('dashboard/admin/plans', 'admin-plans')
+    ->middleware(['auth', 'verified', 'admin'])
+    ->name('admin.plans');
+
+Route::view('dashboard/admin/users', 'admin-users')
+    ->middleware(['auth', 'verified', 'admin'])
+    ->name('admin.users');
+
 Route::view('docs', 'docs')
     ->middleware(['auth', 'verified'])
     ->name('docs');
