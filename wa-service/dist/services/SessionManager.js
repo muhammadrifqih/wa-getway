@@ -252,16 +252,7 @@ class SessionManager {
             formattedTarget = formattedTarget + '@s.whatsapp.net';
         }
         let messagePayload = { text: message };
-        if (metadata && metadata.poll_name && metadata.poll_options) {
-            messagePayload = {
-                poll: {
-                    name: metadata.poll_name,
-                    values: metadata.poll_options,
-                    selectableCount: 1
-                }
-            };
-        }
-        else if (metadata && metadata.latitude && metadata.longitude) {
+        if (metadata && metadata.latitude && metadata.longitude) {
             messagePayload = {
                 location: {
                     degreesLatitude: metadata.latitude,

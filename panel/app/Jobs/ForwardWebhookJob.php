@@ -51,16 +51,33 @@ class ForwardWebhookJob implements ShouldQueue
             if ($response->successful()) {
                 $responseData = $response->json();
                 
-                // Jika server webhook merespon dengan JSON: {"reply": "Halo juga!"}
-                if (is_array($responseData) && !empty($responseData['reply'])) {
+                // Jika server webhook merespon dengan JSON: {"reply": "Halo juga!"} atau memberikan foto/lokasi
+                if (is_array($responseData) && (!empty($responseData['reply']) || !empty($responseData['media_url']) || !empty($responseData['latitude']))) {
                     $device = \App\Models\WhatsappDevice::where('session_id', $this->payload['session_id'])->first();
                     
                     if ($device) {
+                        $isLocation = !empty($responseData['latitude']) && !empty($responseData['longitude']);
+                        
+                        $metadata = null;
+                        if ($isLocation) {
+                            $metadata = [
+                                'latitude' => (float) $responseData['latitude'],
+                                'longitude' => (float) $responseData['longitude'],
+                                'location_name' => $responseData['location_name'] ?? null,
+                                'location_address' => $responseData['location_address'] ?? null
+                            ];
+                        }
+
                         $message = \App\Models\Message::create([
                             'user_id' => $this->webhook->user_id,
                             'whatsapp_device_id' => $device->id,
                             'target' => $this->payload['sender'],
-                            'message' => (string) $responseData['reply'],
+                            'message' => (string) ($responseData['reply'] ?? ''),
+                            'type' => $isLocation ? 'location' : (!empty($responseData['media_url']) ? 'media' : 'text'),
+                            'media_url' => $responseData['media_url'] ?? null,
+                            'media_name' => $responseData['media_name'] ?? null,
+                            'media_mimetype' => $responseData['media_mimetype'] ?? null,
+                            'metadata' => $metadata,
                             'status' => 'pending'
                         ]);
                         

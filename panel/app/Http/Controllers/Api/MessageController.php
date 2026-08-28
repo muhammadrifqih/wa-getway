@@ -20,8 +20,6 @@ class MessageController extends Controller
             'media_url' => 'nullable|url',
             'media_name' => 'nullable|string',
             'media_mimetype' => 'nullable|string',
-            'poll_name' => 'nullable|string',
-            'poll_options' => 'nullable|array|min:1',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'location_name' => 'nullable|string',
@@ -29,20 +27,17 @@ class MessageController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+            return response()->json(['error' => $validator->errors()], 422);
         }
 
         $user = $request->user();
-
-        // Cari device
-        $deviceQuery = WhatsappDevice::where('user_id', $user->id)
-            ->where('status', 'connected');
-
-        if ($request->filled('device_id')) {
-            $deviceQuery->where('id', $request->device_id);
+        
+        $device = null;
+        if ($request->device_id) {
+            $device = $user->devices()->where('id', $request->device_id)->first();
+        } else {
+            $device = $user->devices()->where('status', 'connected')->first();
         }
-
-        $device = $deviceQuery->first();
 
         if (!$device) {
             return response()->json(['error' => 'No connected WhatsApp device found.'], 404);
@@ -68,16 +63,11 @@ class MessageController extends Controller
         if ($subscription->plan->max_messages > 0 && $messageCount >= $subscription->plan->max_messages) {
             return response()->json(['error' => 'Message quota exceeded for your current plan.'], 403);
         }
-        $isPoll = $request->filled('poll_name') && $request->filled('poll_options');
+        
         $isLocation = $request->filled('latitude') && $request->filled('longitude');
         
         $metadata = null;
-        if ($isPoll) {
-            $metadata = [
-                'poll_name' => $request->poll_name,
-                'poll_options' => $request->poll_options
-            ];
-        } else if ($isLocation) {
+        if ($isLocation) {
             $metadata = [
                 'latitude' => (float) $request->latitude,
                 'longitude' => (float) $request->longitude,
@@ -91,7 +81,7 @@ class MessageController extends Controller
             'whatsapp_device_id' => $device->id,
             'target' => $request->target,
             'message' => $request->message ?? '',
-            'type' => $isPoll ? 'poll' : ($isLocation ? 'location' : ($request->filled('media_url') ? 'media' : 'text')),
+            'type' => $isLocation ? 'location' : ($request->filled('media_url') ? 'media' : 'text'),
             'media_url' => $request->media_url,
             'media_name' => $request->media_name,
             'media_mimetype' => $request->media_mimetype,

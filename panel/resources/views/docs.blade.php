@@ -133,19 +133,6 @@ curl -X POST {{ url('/api/v1/messages') }} \
     "media_mimetype": "image/jpeg"
 }'</pre>
                             
-                            <h5 class="font-medium text-gray-800 mb-2 mt-4">Contoh cURL (Mengirim Tombol Cepat / Polling):</h5>
-                            <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto text-gray-800 border border-gray-200">
-curl -X POST {{ url('/api/v1/messages') }} \
--H "Content-Type: application/json" \
--H "Accept: application/json" \
--H "Authorization: Bearer wa_live_KUNCI_API_ANDA_DISINI" \
--d '{
-    "target": "08123456789",
-    "message": "Silakan pilih paket langganan Anda:",
-    "poll_name": "Pilih Paket Internet",
-    "poll_options": ["Paket 10GB", "Paket 50GB", "Hubungi CS"]
-}'</pre>
-                            
                             <h5 class="font-medium text-gray-800 mb-2 mt-4">Contoh cURL (Mengirim Peta / Share Lokasi):</h5>
                             <pre class="bg-gray-100 p-3 rounded text-sm overflow-x-auto text-gray-800 border border-gray-200">
 curl -X POST {{ url('/api/v1/messages') }} \
