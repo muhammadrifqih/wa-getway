@@ -39,7 +39,6 @@ Route::view('dashboard/admin/users', 'admin-users')
     ->name('admin.users');
 
 Route::view('docs', 'docs')
-    ->middleware(['auth', 'verified'])
     ->name('docs');
 
 Route::view('profile', 'profile')
