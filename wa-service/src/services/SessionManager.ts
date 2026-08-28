@@ -125,15 +125,16 @@ class SessionManager {
       let locationData = null;
 
       if (isLocation) {
-        const locMsg = msg.message.locationMessage || msg.message.liveLocationMessage;
-        messageType = 'location';
-        locationData = {
-            latitude: locMsg?.degreesLatitude,
-            longitude: locMsg?.degreesLongitude,
-            name: locMsg?.name || '',
-            address: locMsg?.address || ''
-        };
-        textMessage = `Shared Location: ${locMsg?.degreesLatitude}, ${locMsg?.degreesLongitude}`;
+        let loc: any = msg.message.locationMessage || msg.message.liveLocationMessage;
+        if (loc) {
+          locationData = {
+            latitude: loc.degreesLatitude,
+            longitude: loc.degreesLongitude,
+            name: loc.name || null,
+            address: loc.address || null
+          };
+        }
+        textMessage = `Shared Location: ${loc?.degreesLatitude}, ${loc?.degreesLongitude}`;
       } else if (isMedia) {
         try {
           messageType = msg.message.imageMessage ? 'image' : 

@@ -130,10 +130,49 @@ class SessionManager {
             if (!msg.message || msg.key.fromMe)
                 return;
             const sender = msg.key.remoteJid;
-            const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
-            if (textMessage) {
-                console.log(`[${sessionId}] Incoming message from ${sender}: ${textMessage}`);
-                console.log(`[${sessionId}] FULL MSG:`, JSON.stringify(msg, null, 2));
+            let textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
+            let mediaBase64 = null;
+            let messageType = 'message';
+            const { downloadMediaMessage } = await Promise.resolve().then(() => __importStar(require('@whiskeysockets/baileys')));
+            // Check if it's a media message
+            const isMedia = msg.message.imageMessage || msg.message.videoMessage || msg.message.documentMessage || msg.message.audioMessage;
+            const isLocation = msg.message.locationMessage || msg.message.liveLocationMessage;
+            let locationData = null;
+            if (isLocation) {
+                let loc = msg.message.locationMessage || msg.message.liveLocationMessage;
+                if (loc) {
+                    locationData = {
+                        latitude: loc.degreesLatitude,
+                        longitude: loc.degreesLongitude,
+                        name: loc.name || null,
+                        address: loc.address || null
+                    };
+                }
+                textMessage = `Shared Location: ${loc?.degreesLatitude}, ${loc?.degreesLongitude}`;
+            }
+            else if (isMedia) {
+                try {
+                    messageType = msg.message.imageMessage ? 'image' :
+                        msg.message.videoMessage ? 'video' :
+                            msg.message.audioMessage ? 'audio' : 'document';
+                    if (!textMessage) {
+                        textMessage = msg.message.imageMessage?.caption || msg.message.videoMessage?.caption || msg.message.documentMessage?.caption || '';
+                    }
+                    const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: logger, reuploadRequest: sock.updateMediaMessage });
+                    const mime = msg.message.imageMessage?.mimetype ||
+                        msg.message.videoMessage?.mimetype ||
+                        msg.message.audioMessage?.mimetype ||
+                        msg.message.documentMessage?.mimetype || 'application/octet-stream';
+                    // Convert buffer to Base64 directly in RAM
+                    mediaBase64 = `data:${mime};base64,${buffer.toString('base64')}`;
+                    console.log(`[${sessionId}] Media downloaded and converted to Base64`);
+                }
+                catch (err) {
+                    console.error(`[${sessionId}] Failed to download media`, err);
+                }
+            }
+            if (textMessage || mediaBase64 || locationData) {
+                console.log(`[${sessionId}] Incoming ${messageType} from ${sender}: ${textMessage}`);
                 // Forward to Laravel Webhook Receiver
                 const webhookReceiverUrl = process.env.PANEL_WEBHOOK_URL || 'http://localhost:8000/api/internal/webhook/receive';
                 const serviceKey = process.env.WA_SERVICE_KEY || 'secret_service_key';
@@ -144,12 +183,16 @@ class SessionManager {
                         sender: sender,
                         message: textMessage,
                         timestamp: msg.messageTimestamp,
-                        type: 'message'
+                        type: messageType,
+                        media_base64: mediaBase64,
+                        location_data: locationData
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
                             'X-SERVICE-KEY': serviceKey
-                        }
+                        },
+                        maxBodyLength: Infinity,
+                        maxContentLength: Infinity
                     });
                 }
                 catch (err) {
@@ -195,7 +238,7 @@ class SessionManager {
             return { qr: null };
         return { qr: session.qr };
     }
-    async sendMessage(sessionId, target, message, media) {
+    async sendMessage(sessionId, target, message, media, metadata) {
         const session = this.sessions.get(sessionId);
         if (!session || session.status !== 'connected' || !session.socket) {
             throw new Error('Session is not connected');
@@ -209,7 +252,26 @@ class SessionManager {
             formattedTarget = formattedTarget + '@s.whatsapp.net';
         }
         let messagePayload = { text: message };
-        if (media && media.url) {
+        if (metadata && metadata.poll_name && metadata.poll_options) {
+            messagePayload = {
+                poll: {
+                    name: metadata.poll_name,
+                    values: metadata.poll_options,
+                    selectableCount: 1
+                }
+            };
+        }
+        else if (metadata && metadata.latitude && metadata.longitude) {
+            messagePayload = {
+                location: {
+                    degreesLatitude: metadata.latitude,
+                    degreesLongitude: metadata.longitude,
+                    name: metadata.location_name || undefined,
+                    address: metadata.location_address || undefined
+                }
+            };
+        }
+        else if (media && media.url) {
             if (media.mimetype && media.mimetype.startsWith('image/')) {
                 messagePayload = {
                     image: { url: media.url },
