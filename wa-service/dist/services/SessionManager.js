@@ -125,11 +125,29 @@ class SessionManager {
             }
         });
         sock.ev.on('creds.update', saveCreds);
+        // Listen to LID mapping events natively emitted by Baileys
+        sock.ev.on('lid-mapping.update', (mapping) => {
+            if (mapping.lid && mapping.pn) {
+                Promise.resolve().then(() => __importStar(require('../utils/LidHelper'))).then(({ lidStorage }) => lidStorage.storeMapping(mapping.lid, mapping.pn));
+            }
+        });
+        sock.ev.on('contacts.upsert', (contacts) => {
+            Promise.resolve().then(() => __importStar(require('../utils/LidHelper'))).then(({ lidStorage }) => {
+                for (const contact of contacts) {
+                    if (contact.lid && contact.id && contact.id.endsWith('@s.whatsapp.net')) {
+                        lidStorage.storeMapping(contact.lid, contact.id);
+                    }
+                }
+            });
+        });
         sock.ev.on('messages.upsert', async (m) => {
             const msg = m.messages[0];
             if (!msg.message || msg.key.fromMe)
                 return;
-            const sender = msg.key.remoteJid;
+            const rawSender = msg.key.participant || msg.key.remoteJid || '';
+            const pushName = msg.pushName || 'Unknown';
+            const { resolvePhoneNumber } = await Promise.resolve().then(() => __importStar(require('../utils/LidHelper')));
+            const resolvedSender = await resolvePhoneNumber(rawSender, sock);
             let textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
             let mediaBase64 = null;
             let messageType = 'message';
@@ -172,7 +190,7 @@ class SessionManager {
                 }
             }
             if (textMessage || mediaBase64 || locationData) {
-                console.log(`[${sessionId}] Incoming ${messageType} from ${sender}: ${textMessage}`);
+                console.log(`[${sessionId}] Incoming ${messageType} from ${resolvedSender.jid}: ${textMessage}`);
                 // Forward to Laravel Webhook Receiver
                 const webhookReceiverUrl = process.env.PANEL_WEBHOOK_URL || 'http://localhost:8000/api/internal/webhook/receive';
                 const serviceKey = process.env.WA_SERVICE_KEY || 'secret_service_key';
@@ -180,7 +198,11 @@ class SessionManager {
                     const axios = (await Promise.resolve().then(() => __importStar(require('axios')))).default;
                     await axios.post(webhookReceiverUrl, {
                         session_id: sessionId,
-                        sender: sender,
+                        sender: resolvedSender.jid, // the resolved JID or original LID
+                        original_sender: rawSender,
+                        lid: resolvedSender.lid,
+                        phoneNumber: resolvedSender.phoneNumber,
+                        pushName: pushName,
                         message: textMessage,
                         timestamp: msg.messageTimestamp,
                         type: messageType,
