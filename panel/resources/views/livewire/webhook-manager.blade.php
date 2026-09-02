@@ -86,12 +86,19 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 font-mono text-xs max-w-xs" x-data="{ expanded: false }">
-                                <div x-show="!expanded" @click="expanded = true" class="truncate cursor-pointer text-indigo-600 hover:text-indigo-800" title="Click to view full payload">
+                                <div x-show="!expanded" @click="expanded = true" class="truncate cursor-pointer text-indigo-600 hover:text-indigo-800" title="Click to view full payload and response">
                                     {{ Str::limit($log->payload, 60) }}
                                 </div>
                                 <div x-show="expanded" x-cloak class="relative mt-1">
-                                    <textarea readonly class="w-full h-32 p-2 border border-gray-200 rounded font-mono text-xs bg-gray-50 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ $log->payload }}</textarea>
-                                    <button @click="expanded = false" class="mt-1 text-xs text-red-500 hover:text-red-700 font-medium">Collapse</button>
+                                    <div class="mb-1 font-semibold text-gray-700">Payload Sent:</div>
+                                    <textarea readonly class="w-full h-24 p-2 border border-gray-200 rounded font-mono text-xs bg-gray-50 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ $log->payload }}</textarea>
+                                    
+                                    @if($log->response_body)
+                                        <div class="mt-2 mb-1 font-semibold text-gray-700">Response Received from Your Server:</div>
+                                        <textarea readonly class="w-full h-20 p-2 border border-gray-200 rounded font-mono text-xs bg-red-50 text-red-800 focus:outline-none focus:ring-1 focus:ring-red-500">{{ $log->response_body }}</textarea>
+                                    @endif
+
+                                    <button @click="expanded = false" class="mt-2 text-xs text-red-500 hover:text-red-700 font-medium">Collapse</button>
                                 </div>
                             </td>
                         </tr>
