@@ -76,7 +76,7 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($logs as $log)
-                        <tr>
+                        <tr wire:key="log-{{ $log->id }}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $log->created_at->format('M d, H:i:s') }}
                             </td>
@@ -85,8 +85,14 @@
                                     {{ $log->response_code }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 font-mono text-xs max-w-xs truncate">
-                                {{ $log->payload }}
+                            <td class="px-6 py-4 text-sm text-gray-500 font-mono text-xs max-w-xs" x-data="{ expanded: false }">
+                                <div x-show="!expanded" @click="expanded = true" class="truncate cursor-pointer text-indigo-600 hover:text-indigo-800" title="Click to view full payload">
+                                    {{ Str::limit($log->payload, 60) }}
+                                </div>
+                                <div x-show="expanded" x-cloak class="relative mt-1">
+                                    <textarea readonly class="w-full h-32 p-2 border border-gray-200 rounded font-mono text-xs bg-gray-50 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ $log->payload }}</textarea>
+                                    <button @click="expanded = false" class="mt-1 text-xs text-red-500 hover:text-red-700 font-medium">Collapse</button>
+                                </div>
                             </td>
                         </tr>
                         @empty
